@@ -68,6 +68,25 @@ class Http extends AbstractTransport
 
         $query = $request->getQuery();
 
+        //Auto add fielddata to all text fields
+        foreach ($request as &$item) {
+            if (isset($item['method']) && $item['method'] == 'PUT') {
+                foreach ($item['data']['mappings'] as $index => $fields) {
+                    if (isset ($fields['properties'])) {
+                        foreach ($fields['properties'] as $fieldName => $fieldValue) {
+                            if ($fieldValue['type'] == 'text') {
+                                if ($fieldValue['type'] == 'nested' || $fieldValue['type'] == 'object'){
+                                    $item['data']['mappings'][$index]['properties'][$fieldName] = $this-> formatElasticaData($item['data']['mappings'][$index]['properties'][$fieldName]);
+                                }else {
+                                    $item['data']['mappings'][$index]['properties'][$fieldName]['fielddata'] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if (!empty($query)) {
             $baseUri .= '?'.http_build_query($query);
         }
@@ -187,6 +206,28 @@ class Http extends AbstractTransport
         }
 
         return $response;
+    }
+
+    /**
+     * Recursive Traitement of ES data to set fielddata to true
+     * @param $datas
+     */
+    protected function formatElasticaData($datas) {
+        if (isset($datas['properties'])){
+            foreach ($datas['properties'] as $dataName => $dataValue) {
+                if ($dataValue['type'] == 'string'){
+                    $datas['properties'][$dataName]['type'] = 'text';
+
+                }
+                if ($dataValue['type'] != 'nested' && $dataValue['type'] != 'object' && $dataValue['type'] != 'geo_point') {
+                    $datas['properties'][$dataName]['fielddata'] = true;
+                }
+                else {
+                    $datas = $this->formatElasticaData($dataValue);
+                }
+            }
+        }
+        return $datas;
     }
 
     /**
