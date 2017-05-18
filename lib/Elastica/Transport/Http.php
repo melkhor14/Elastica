@@ -74,12 +74,10 @@ class Http extends AbstractTransport
                 foreach ($item['data']['mappings'] as $index => $fields) {
                     if (isset ($fields['properties'])) {
                         foreach ($fields['properties'] as $fieldName => $fieldValue) {
-                            if ($fieldValue['type'] == 'text') {
-                                if ($fieldValue['type'] == 'nested' || $fieldValue['type'] == 'object'){
-                                    $item['data']['mappings'][$index]['properties'][$fieldName] = $this-> formatElasticaData($item['data']['mappings'][$index]['properties'][$fieldName]);
-                                }else {
-                                    $item['data']['mappings'][$index]['properties'][$fieldName]['fielddata'] = true;
-                                }
+                            if ($fieldValue['type'] == 'nested' || $fieldValue['type'] == 'object') {
+                                $item['data']['mappings'][$index]['properties'][$fieldName] = $this->formatElasticaData($item['data']['mappings'][$index]['properties'][$fieldName]);
+                            }else if($fieldValue['type'] == 'text') {
+                                $item['data']['mappings'][$index]['properties'][$fieldName]['fielddata'] = true;
                             }
                         }
                     }
@@ -215,16 +213,9 @@ class Http extends AbstractTransport
     protected function formatElasticaData($datas) {
         if (isset($datas['properties'])){
             foreach ($datas['properties'] as $dataName => $dataValue) {
-                if ($dataValue['type'] == 'string'){
-                    $datas['properties'][$dataName]['type'] = 'text';
-
-                }
-                if ($dataValue['type'] != 'nested' && $dataValue['type'] != 'object' && $dataValue['type'] != 'geo_point') {
-                    $datas['properties'][$dataName]['fielddata'] = true;
-                }
-                else {
-                    $datas = $this->formatElasticaData($dataValue);
-                }
+                if ($dataValue['type'] == 'string') $datas['properties'][$dataName]['type'] = 'text';
+                if($dataValue['type'] == 'text') $datas['properties'][$dataName]['fielddata'] = true;
+                else if($dataValue['type'] == 'nested' || $dataValue['type'] == 'object') $datas['properties'][$dataName] = $this->formatElasticaData($dataValue);
             }
         }
         return $datas;
