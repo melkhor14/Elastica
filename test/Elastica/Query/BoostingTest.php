@@ -1,43 +1,12 @@
 <?php
 namespace Elastica\Test\Query;
 
-use Elastica\Document;
 use Elastica\Query\Boosting;
 use Elastica\Query\Term;
 use Elastica\Test\Base as BaseTest;
 
 class BoostingTest extends BaseTest
 {
-    /**
-     * @var array
-     */
-    protected $sampleData = [
-        ['name' => 'Vital Lama', 'price' => 5.2],
-        ['name' => 'Vital Match', 'price' => 2.1],
-        ['name' => 'Mercury Vital', 'price' => 7.5],
-        ['name' => 'Fist Mercury', 'price' => 3.8],
-        ['name' => 'Lama Vital 2nd', 'price' => 3.2],
-    ];
-
-    protected function _getTestIndex()
-    {
-        $index = $this->_createIndex();
-        $type = $index->getType('test');
-        $type->setMapping([
-            'name' => ['type' => 'text', 'index' => 'analyzed'],
-            'price' => ['type' => 'float'],
-        ]);
-        $docs = [];
-        foreach ($this->sampleData as $key => $value) {
-            $docs[] = new Document($key, $value);
-        }
-        $type->addDocuments($docs);
-
-        $index->refresh();
-
-        return $index;
-    }
-
     /**
      * @group unit
      */
@@ -64,7 +33,7 @@ class BoostingTest extends BaseTest
     }
 
     /**
-     * @group functional
+     * @group unit
      */
     public function testNegativeBoost()
     {
@@ -72,18 +41,19 @@ class BoostingTest extends BaseTest
         $negativeKeyword = 'mercury';
 
         $query = new Boosting();
-        $positiveQuery = new Term(['name' => $keyword]);
-        $negativeQuery = new Term(['name' => $negativeKeyword]);
+        $positiveQuery = new Term();
+        $positiveQuery->setTerm('name', $keyword, 5.0);
+        $negativeQuery = new Term();
+        $negativeQuery->setTerm('name', $negativeKeyword, 8.0);
         $query->setPositiveQuery($positiveQuery);
         $query->setNegativeQuery($negativeQuery);
-        $query->setNegativeBoost(0.2);
+        $query->setNegativeBoost(23.0);
+        $query->setParam('boost', 42.0);
 
-        $response = $this->_getTestIndex()->search($query);
-        $results = $response->getResults();
-
-        $this->assertEquals($response->getTotalHits(), 4);
-
-        $lastResult = $results[3]->getData();
-        $this->assertEquals($lastResult['name'], $this->sampleData[2]['name']);
+        $queryToCheck = $query->toArray();
+        $this->assertEquals($queryToCheck['boosting']['boost'], 42.0);
+        $this->assertEquals($queryToCheck['boosting']['positive']['term']['name']['boost'], 5.0);
+        $this->assertEquals($queryToCheck['boosting']['negative']['term']['name']['boost'], 8.0);
+        $this->assertEquals($queryToCheck['boosting']['negative_boost'], 23.0);
     }
 }

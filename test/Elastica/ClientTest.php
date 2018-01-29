@@ -699,7 +699,6 @@ class ClientTest extends BaseTest
      */
     public function testUpdateDocumentByScript()
     {
-        $this->_checkScriptInlineSetting();
         $index = $this->_createIndex();
         $type = $index->getType('test');
         $client = $index->getClient();
@@ -728,7 +727,6 @@ class ClientTest extends BaseTest
      */
     public function testUpdateDocumentByScriptWithUpsert()
     {
-        $this->_checkScriptInlineSetting();
         $index = $this->_createIndex();
         $type = $index->getType('test');
         $client = $index->getClient();
@@ -932,6 +930,49 @@ class ClientTest extends BaseTest
     /**
      * @group functional
      */
+    public function testDeleteDocumentsWithRequestParameters()
+    {
+        $index = $this->_createIndex();
+        $type = $index->getType('test');
+        $client = $index->getClient();
+
+        $docs = [
+            new Document(1, ['field' => 'value1'], $type, $index),
+            new Document(2, ['field' => 'value2'], $type, $index),
+            new Document(3, ['field' => 'value3'], $type, $index),
+        ];
+
+        $response = $client->addDocuments($docs);
+
+        $this->assertInstanceOf(ResponseSet::class, $response);
+        $this->assertEquals(3, count($response));
+        $this->assertTrue($response->isOk());
+        $this->assertFalse($response->hasError());
+        $this->assertEquals('', $response->getError());
+
+        $index->refresh();
+
+        $this->assertEquals(3, $type->count());
+
+        $deleteDocs = [
+            $docs[0],
+            $docs[2],
+        ];
+
+        $response = $client->deleteDocuments($deleteDocs, ['refresh' => true]);
+
+        $this->assertInstanceOf(ResponseSet::class, $response);
+        $this->assertEquals(2, count($response));
+        $this->assertTrue($response->isOk());
+        $this->assertFalse($response->hasError());
+        $this->assertEquals('', $response->getError());
+
+        $this->assertEquals(1, $type->count());
+    }
+
+    /**
+     * @group functional
+     */
     public function testLastRequestResponse()
     {
         $client = $this->_getClient();
@@ -954,7 +995,6 @@ class ClientTest extends BaseTest
      */
     public function testUpdateDocumentPopulateFields()
     {
-        $this->_checkScriptInlineSetting();
         $index = $this->_createIndex();
         $type = $index->getType('test');
         $client = $index->getClient();
@@ -1315,11 +1355,6 @@ class ClientTest extends BaseTest
         $doc = new Document(null, ['foo' => 'bar']);
         $doc->setRouting('first_routing');
         $type->addDocument($doc);
-
-        $type2 = $index->getType('foobar');
-        $doc = new Document(null, ['foo2' => 'bar2']);
-        $doc->setRouting('second_routing');
-        $type2->addDocument($doc);
 
         $index->refresh();
 

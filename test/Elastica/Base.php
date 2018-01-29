@@ -118,24 +118,17 @@ class Base extends \PHPUnit_Framework_TestCase
     protected function _createIndex($name = null, $delete = true, $shards = 1)
     {
         if (is_null($name)) {
-            $name = preg_replace('/[^a-z]/i', '', strtolower(get_called_class())).uniqid();
+            $name = preg_replace('/[^a-z]/i', '', strtolower(get_called_class()).uniqid());
         }
 
         $client = $this->_getClient();
         $index = $client->getIndex('elastica_'.$name);
-        $index->create(['index' => ['number_of_shards' => $shards, 'number_of_replicas' => 0]], $delete);
+
+        if ('elasticsearch' === getenv('ES_HOST')) {
+            $index->create(['index' => ['number_of_shards' => $shards, 'number_of_replicas' => 1]], $delete);
+        }
 
         return $index;
-    }
-
-    protected function _checkScriptInlineSetting()
-    {
-        $nodes = $this->_getClient()->getCluster()->getNodes();
-        $scriptInline = $nodes[0]->getInfo()->get('settings', 'script', 'inline');
-
-        if ($scriptInline != 'true') {
-            $this->markTestSkipped('script.inline is not enabled. This is required for this test');
-        }
     }
 
     protected function _checkPlugin($plugin)
@@ -144,6 +137,13 @@ class Base extends \PHPUnit_Framework_TestCase
         if (!$nodes[0]->getInfo()->hasPlugin($plugin)) {
             $this->markTestSkipped($plugin.' plugin not installed.');
         }
+    }
+
+    protected function _getVersion()
+    {
+        $data = $this->_getClient()->request('/')->getData();
+
+        return substr($data['version']['number'], 0, 1);
     }
 
     protected function _checkVersion($version)

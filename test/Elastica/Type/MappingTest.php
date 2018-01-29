@@ -66,27 +66,6 @@ class MappingTest extends BaseTest
     /**
      * @group functional
      */
-    public function testEnableAllField()
-    {
-        $index = $this->_createIndex();
-        $type = $index->getType('test');
-
-        $mapping = new Mapping($type, []);
-
-        $mapping->enableAllField();
-
-        $data = $mapping->toArray();
-        $this->assertTrue($data[$type->getName()]['_all']['enabled']);
-
-        $response = $mapping->send();
-        $this->assertTrue($response->isOk());
-
-        $index->delete();
-    }
-
-    /**
-     * @group functional
-     */
     public function testNestedMapping()
     {
         $client = $this->_getClient();
@@ -134,31 +113,86 @@ class MappingTest extends BaseTest
     /**
      * @group functional
      */
-    public function testParentMapping()
+    public function testJoinMapping()
     {
-        $index = $this->_createIndex();
+        $client = $this->_getClient();
+        $index = $client->getIndex('testjoinparentid');
+        $index->create([], true);
+        $type = $index->getType('test');
 
-        $childtype = new Type($index, 'childtype');
-        $childmapping = new Mapping($childtype,
-            [
-                'name' => ['type' => 'text', 'store' => true],
-            ]
-        );
-        $childmapping->setParent('parenttype');
+        $mapping = new Mapping();
+        $mapping->setType($type);
 
-        $childtype->setMapping($childmapping);
+        $mapping = new Mapping($type, [
+            'firstname' => ['type' => 'text', 'store' => true],
+            'lastname' => ['type' => 'text'],
+            'my_join_field' => [
+                'type' => 'join',
+                'relations' => [
+                    'question' => 'answer',
+                ],
+            ],
+        ]);
 
-        $data = $childmapping->toArray();
-        $this->assertEquals('parenttype', $data[$childtype->getName()]['_parent']['type']);
+        $expected = [
+            'test' => [
+                'properties' => [
+                    'firstname' => ['type' => 'text', 'store' => true],
+                    'lastname' => ['type' => 'text'],
+                    'my_join_field' => [
+                        'type' => 'join',
+                        'relations' => [
+                            'question' => 'answer',
+                        ],
+                    ],
+                ],
+            ],
+        ];
 
-        $parenttype = new Type($index, 'parenttype');
-        $parentmapping = new Mapping($parenttype,
-            [
-                'name' => ['type' => 'text', 'store' => true],
-            ]
-        );
+        $this->assertEquals($expected, $mapping->toArray());
+        $index->refresh();
 
-        $parenttype->setMapping($parentmapping);
+        $doc1 = new Document(1, [
+            'text' => 'this is the 1st question',
+            'my_join_field' => [
+                'name' => 'question',
+            ],
+        ], 'test');
+
+        $doc2 = new Document(2, [
+            'text' => 'this is the 2nd question',
+            'my_join_field' => [
+                'name' => 'question',
+            ],
+        ], 'test');
+
+        $index->addDocuments([$doc1, $doc2]);
+
+        $doc3 = new Document(3, [
+            'text' => 'this is an answer, the 1st',
+            'my_join_field' => [
+                'name' => 'answer',
+                'parent' => 1,
+            ],
+        ], 'test');
+
+        $doc4 = new Document(4, [
+            'text' => 'this is an answer, the 2nd',
+            'my_join_field' => [
+                'name' => 'answer',
+                'parent' => 2,
+            ],
+        ], 'test');
+
+        $index->addDocuments([$doc3, $doc4]);
+        $index->refresh();
+
+        $results = $index->search([])->getResults();
+
+        $this->assertCount(4, $results);
+        foreach ($results as $result) {
+            $this->assertArrayHasKey('my_join_field', $result->getData());
+        }
     }
 
     /**
@@ -173,8 +207,9 @@ class MappingTest extends BaseTest
             [
                 'note' => [
                     'properties' => [
-                        'titulo' => ['type' => 'text', 'include_in_all' => true, 'boost' => 1.0],
-                        'contenido' => ['type' => 'text', 'include_in_all' => true, 'boost' => 1.0],
+                        'titulo' => ['type' => 'text', 'copy_to' => 'testall', 'boost' => 1.0],
+                        'contenido' => ['type' => 'text', 'copy_to' => 'testall', 'boost' => 1.0],
+                        'testall' => ['type' => 'text',  'boost' => 1.0],
                     ],
                 ],
             ]

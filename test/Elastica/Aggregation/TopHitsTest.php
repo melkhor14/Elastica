@@ -20,8 +20,14 @@ class TopHitsTest extends BaseAggregationTest
         $mapping = new Mapping($index->getType('test'), [
             'tags' => ['type' => 'keyword'],
             'title' => ['type' => 'keyword'],
+            'my_join_field' => [
+                'type' => 'join',
+                'relations' => [
+                    'question' => 'answer',
+                ],
+            ],
         ]);
-        $index->getType('test')->setMapping($mapping);
+        $index->getType('questions')->setMapping($mapping);
 
         $index->getType('questions')->addDocuments([
             new Document(1, [
@@ -331,7 +337,6 @@ class TopHitsTest extends BaseAggregationTest
      */
     public function testAggregateWithScriptFields()
     {
-        $this->_checkScriptInlineSetting();
         $aggr = new TopHits('top_tag_hits');
         $aggr->setSize(1);
         $aggr->setScriptFields(['three' => new Script('1 + 2')]);

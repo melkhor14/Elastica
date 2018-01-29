@@ -84,7 +84,7 @@ class CallbackStrategyTest extends Base
        }];
 
         $client = $this->_getClient($config);
-        $response = $client->request('/_aliases');
+        $response = $client->request('_aliases');
 
         $this->assertEquals(1, $count);
 

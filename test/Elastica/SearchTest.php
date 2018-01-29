@@ -216,10 +216,7 @@ class SearchTest extends BaseTest
     {
         $client = $this->_getClient();
         $search1 = new Search($client);
-
         $index1 = $this->_createIndex();
-        $index2 = $this->_createIndex();
-
         $type1 = $index1->getType('hello1');
 
         $result = $search1->search([]);
@@ -229,8 +226,6 @@ class SearchTest extends BaseTest
 
         $result = $search1->search([]);
         $this->assertFalse($result->getResponse()->hasError());
-
-        $search1->addIndex($index2);
 
         $result = $search1->search([]);
         $this->assertFalse($result->getResponse()->hasError());
@@ -283,7 +278,7 @@ class SearchTest extends BaseTest
         $this->assertFalse($result->getResponse()->hasError());
         $this->assertEquals(5, count($result->getResults()));
         $this->assertArrayNotHasKey(Search::OPTION_SCROLL_ID, $search->getClient()->getLastRequest()->getQuery());
-        $this->assertEquals($scrollId, $search->getClient()->getLastRequest()->getData());
+        $this->assertEquals([Search::OPTION_SCROLL_ID => $scrollId], $search->getClient()->getLastRequest()->getData());
 
         $result = $search->search([], [
             Search::OPTION_SCROLL => '5m',
@@ -292,7 +287,7 @@ class SearchTest extends BaseTest
         $this->assertFalse($result->getResponse()->hasError());
         $this->assertEquals(0, count($result->getResults()));
         $this->assertArrayNotHasKey(Search::OPTION_SCROLL_ID, $search->getClient()->getLastRequest()->getQuery());
-        $this->assertEquals($scrollId, $search->getClient()->getLastRequest()->getData());
+        $this->assertEquals([Search::OPTION_SCROLL_ID => $scrollId], $search->getClient()->getLastRequest()->getData());
     }
 
     /**
@@ -575,11 +570,13 @@ class SearchTest extends BaseTest
         $exception = null;
         try {
             $search->search($query);
+            $this->fail('Should raise an Index not found exception');
         } catch (ResponseException $e) {
-            $exception = $e;
+            $error = $e->getResponse()->getFullError();
+
+            $this->assertEquals('index_not_found_exception', $error['type']);
+            $this->assertEquals('no such index', $error['reason']);
         }
-        $error = $exception->getResponse()->getFullError();
-        $this->assertEquals('index_not_found_exception', $error['type']);
 
         $results = $search->search($query, [Search::OPTION_SEARCH_IGNORE_UNAVAILABLE => true]);
         $this->assertInstanceOf(ResultSet::class, $results);

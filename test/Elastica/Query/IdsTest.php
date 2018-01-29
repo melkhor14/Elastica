@@ -18,7 +18,6 @@ class IdsTest extends BaseTest
         $index = $this->_createIndex();
 
         $type1 = $index->getType('helloworld1');
-        $type2 = $index->getType('helloworld2');
 
         $doc = new Document(1, ['name' => 'hello world']);
         $type1->addDocument($doc);
@@ -28,9 +27,6 @@ class IdsTest extends BaseTest
 
         $doc = new Document(3, ['name' => 'ruflin']);
         $type1->addDocument($doc);
-
-        $doc = new Document(4, ['name' => 'hello world again']);
-        $type2->addDocument($doc);
 
         $index->refresh();
 
@@ -100,7 +96,6 @@ class IdsTest extends BaseTest
         $query = new Ids();
 
         $query->setIds('1');
-        $query->setType('helloworld1');
 
         $resultSet = $this->_index->search($query);
 
@@ -115,7 +110,6 @@ class IdsTest extends BaseTest
         $query = new Ids();
 
         $query->setIds(['1', '2']);
-        $query->setType('helloworld1');
 
         $resultSet = $this->_index->search($query);
 
@@ -131,7 +125,6 @@ class IdsTest extends BaseTest
 
         // Doc 4 is in the second type...
         $query->setIds('4');
-        $query->setType('helloworld1');
 
         $resultSet = $this->_index->search($query);
 
@@ -148,57 +141,10 @@ class IdsTest extends BaseTest
 
         // Doc 4 is in the second type...
         $query->setIds(['1', '4']);
-        $query->setType('helloworld1');
 
         $resultSet = $this->_index->search($query);
 
         // ...therefore only 1 result should be returned
-        $this->assertEquals(1, $resultSet->count());
-    }
-
-    /**
-     * @group functional
-     */
-    public function testSetTypeAndAddType()
-    {
-        $query = new Ids();
-
-        $query->setIds(['1', '4']);
-        $query->setType('helloworld1');
-        $query->addType('helloworld2');
-
-        $resultSet = $this->_index->search($query);
-
-        $this->assertEquals(2, $resultSet->count());
-    }
-
-    /**
-     * @group functional
-     */
-    public function testSetTypeArraySearchArray()
-    {
-        $query = new Ids();
-
-        $query->setIds(['1', '4']);
-        $query->setType(['helloworld1', 'helloworld2']);
-
-        $resultSet = $this->_index->search($query);
-
-        $this->assertEquals(2, $resultSet->count());
-    }
-
-    /**
-     * @group functional
-     */
-    public function testSetTypeArraySearchSingle()
-    {
-        $query = new Ids();
-
-        $query->setIds('4');
-        $query->setType(['helloworld1', 'helloworld2']);
-
-        $resultSet = $this->_index->search($query);
-
         $this->assertEquals(1, $resultSet->count());
     }
 

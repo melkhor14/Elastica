@@ -26,7 +26,7 @@ class RoundRobinTest extends Base
     {
         $config = ['connectionStrategy' => 'RoundRobin'];
         $client = $this->_getClient($config);
-        $response = $client->request('/_aliases');
+        $response = $client->request('_aliases');
         /* @var $response Response */
 
         $this->_checkResponse($response);
@@ -56,7 +56,7 @@ class RoundRobinTest extends Base
 
         $this->_checkStrategy($client);
 
-        $client->request('/_aliases');
+        $client->request('_aliases');
     }
 
     /**
@@ -77,7 +77,7 @@ class RoundRobinTest extends Base
         $client = $this->_getClient(['connectionStrategy' => 'RoundRobin'], $callback);
         $client->setConnections($connections);
 
-        $response = $client->request('/_aliases');
+        $response = $client->request('_aliases');
         /* @var $response Response */
 
         $this->_checkResponse($response);
@@ -106,7 +106,7 @@ class RoundRobinTest extends Base
         $client->setConnections($connections);
 
         try {
-            $client->request('/_aliases');
+            $client->request('_aliases');
             $this->fail('Should throw exception as no connection valid');
         } catch (ConnectionException $e) {
             $this->assertEquals(count($connections), $count);

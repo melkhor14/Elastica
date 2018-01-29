@@ -45,7 +45,7 @@ class QueryTest extends AbstractDSLTest
         $this->_assertImplemented($queryDSL, 'fuzzy', Query\Fuzzy::class, ['field', 'type']);
         $this->_assertImplemented($queryDSL, 'has_child', Query\HasChild::class, [new Match()]);
         $this->_assertImplemented($queryDSL, 'has_parent', Query\HasParent::class, [new Match(), 'type']);
-        $this->_assertImplemented($queryDSL, 'ids', Query\Ids::class, ['type', []]);
+        $this->_assertImplemented($queryDSL, 'ids', Query\Ids::class, [[]]);
         $this->_assertImplemented($queryDSL, 'match', Match::class, ['field', 'values']);
         $this->_assertImplemented($queryDSL, 'match_all', Query\MatchAll::class, []);
         $this->_assertImplemented($queryDSL, 'match_none', Query\MatchNone::class, []);
@@ -69,13 +69,15 @@ class QueryTest extends AbstractDSLTest
         $this->_assertImplemented($queryDSL, 'exists', Query\Exists::class, ['field']);
         $this->_assertImplemented($queryDSL, 'type', Query\Type::class, []);
         $this->_assertImplemented($queryDSL, 'type', Query\Type::class, ['type']);
+        $this->_assertImplemented($queryDSL, 'span_term', Query\SpanTerm::class, []);
+        $this->_assertImplemented($queryDSL, 'span_multi_term', Query\SpanMulti::class, []);
+        $this->_assertImplemented($queryDSL, 'span_near', Query\SpanNear::class, []);
+        $this->_assertImplemented($queryDSL, 'span_or', Query\SpanOr::class, []);
+        $this->_assertImplemented($queryDSL, 'span_first', Query\SpanFirst::class, []);
+        $this->_assertImplemented($queryDSL, 'span_containing', Query\SpanContaining::class, []);
+        $this->_assertImplemented($queryDSL, 'span_within', Query\SpanWithin::class, []);
+        $this->_assertImplemented($queryDSL, 'span_not', Query\SpanNot::class, []);
 
         $this->_assertNotImplemented($queryDSL, 'geo_shape', []);
-        $this->_assertNotImplemented($queryDSL, 'span_first', []);
-        $this->_assertNotImplemented($queryDSL, 'span_multi_term', []);
-        $this->_assertNotImplemented($queryDSL, 'span_near', []);
-        $this->_assertNotImplemented($queryDSL, 'span_not', []);
-        $this->_assertNotImplemented($queryDSL, 'span_or', []);
-        $this->_assertNotImplemented($queryDSL, 'span_term', []);
     }
 }

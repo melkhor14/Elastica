@@ -150,7 +150,7 @@ class TypeTest extends BaseTest
 
         $type = new Type($index, 'user');
         $mapping = new Mapping($type, [
-            'id' => ['type' => 'integer', 'store' => 'yes'],
+            'id' => ['type' => 'integer', 'store' => 'true'],
             'username' => ['type' => 'text'],
         ]);
         $mapping->setSource(['enabled' => false]);
@@ -514,13 +514,13 @@ class TypeTest extends BaseTest
         $mapping = new Mapping();
         $mapping->setProperties([
             'name' => [
-                'type' => 'string',
-                'store' => 'yes', ],
+                'type' => 'text',
+                'store' => true, ],
             'email' => [
-                'type' => 'string',
-                'store' => 'yes', ],
+                'type' => 'text',
+                'store' => true, ],
             'country' => [
-                'type' => 'string',
+                'type' => 'text',
             ],
         ]);
 
@@ -580,7 +580,6 @@ class TypeTest extends BaseTest
      */
     public function testUpdateDocument()
     {
-        $this->_checkScriptInlineSetting();
         $client = $this->_getClient();
         $index = $client->getIndex('elastica_test');
         $type = $index->getType('update_type');
@@ -611,7 +610,6 @@ class TypeTest extends BaseTest
      */
     public function testUpdateDocumentWithIdForwardSlashes()
     {
-        $this->_checkScriptInlineSetting();
         $client = $this->_getClient();
         $index = $client->getIndex('elastica_test');
         $type = $index->getType('update_type');
@@ -662,12 +660,16 @@ class TypeTest extends BaseTest
         $script->setUpsert($document);
 
         try {
-            $type->updateDocument($script, ['version' => 999]); // Wrong version number to make the update fail
+            $type->updateDocument($script, ['version' => 999]);
         } catch (ResponseException $e) {
             $error = $e->getResponse()->getFullError();
-            $this->assertContains('version_conflict_engine_exception', $error['type']);
+
+            $this->assertContains('action_request_validation_exception', $error['type']);
+            $this->assertContains('can\'t provide version in upsert request', $error['reason']);
+            $this->assertContains('can\'t provide both upsert request and a version', $error['reason']);
         }
         $updatedDoc = $type->getDocument($id)->getData();
+
         $this->assertNotEquals($newName, $updatedDoc['name'], 'Name was updated');
         $this->assertNotEquals(3, $updatedDoc['counter'], 'Counter was incremented');
     }
@@ -677,7 +679,6 @@ class TypeTest extends BaseTest
      */
     public function testUpdateDocumentWithFieldsSource()
     {
-        $this->_checkScriptInlineSetting();
         $client = $this->_getClient();
         $index = $client->getIndex('elastica_test');
         $type = $index->getType('update_type');
@@ -989,5 +990,29 @@ class TypeTest extends BaseTest
             ['foo' => ['properties' => $expect]],
             $mapping['mappings']
         );
+    }
+
+    /**
+     * @group functional
+     */
+    public function testExceptionWithTwoMappingType()
+    {
+        $index = $this->_createIndex();
+        $type1 = new Type($index, 'foo');
+        $type2 = new Type($index, 'bar');
+
+        $mapping = new Mapping(null, $expect = [
+            'text' => ['type' => 'text', 'analyzer' => 'standard'],
+        ]);
+        $type1->setMapping($mapping);
+
+        try {
+            $type2->setMapping($mapping);
+        } catch (ResponseException $e) {
+            $error = $e->getResponse()->getFullError();
+            $this->assertEquals('illegal_argument_exception', $error['type']);
+            $this->assertContains('Rejecting mapping update to', $error['reason']);
+            $this->assertContains('as the final mapping would have more than 1 type', $error['reason']);
+        }
     }
 }

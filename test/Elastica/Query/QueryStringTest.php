@@ -2,6 +2,7 @@
 namespace Elastica\Test\Query;
 
 use Elastica\Document;
+use Elastica\Exception\ResponseException;
 use Elastica\Query\QueryString;
 use Elastica\Test\Base as BaseTest;
 
@@ -74,11 +75,44 @@ class QueryStringTest extends BaseTest
 
         $query = new QueryString();
         $query = $query->setQuery('ruf*');
-        $query = $query->setDefaultField('title');
         $query = $query->setFields(['title', 'firstname', 'lastname', 'price', 'year']);
 
         $resultSet = $type->search($query);
         $this->assertEquals(1, $resultSet->count());
+    }
+
+    /**
+     * Tests if search in multiple fields is possible.
+     *
+     * @group functional
+     */
+    public function testSearchFieldsValidationException()
+    {
+        $index = $this->_createIndex();
+        $type = $index->getType('test');
+
+        $doc = new Document(1, ['title' => 'hello world', 'firstname' => 'nicolas', 'lastname' => 'ruflin', 'price' => '102', 'year' => '2012']);
+        $type->addDocument($doc);
+        $index->refresh();
+
+        $query = new QueryString();
+        $query = $query->setQuery('ruf*');
+        $query = $query->setDefaultField('title');
+        $query = $query->setFields(['title', 'firstname', 'lastname', 'price', 'year']);
+
+        try {
+            $resultSet = $type->search($query);
+        } catch (ResponseException $ex) {
+            $error = $ex->getResponse()->getFullError();
+
+            $this->assertContains('query_shard_exception', $error['root_cause'][0]['type']);
+            $this->assertContains('failed to create query', $error['root_cause'][0]['reason']);
+
+            $this->assertContains('query_validation_exception', $error);
+            $this->assertContains('[fields] parameter in conjunction with [default_field]', $error['failed_shards'][0]['reason']['caused_by']['reason']);
+
+            $this->assertEquals(400, $ex->getResponse()->getStatus());
+        }
     }
 
     /**

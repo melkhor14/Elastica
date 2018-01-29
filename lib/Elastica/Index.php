@@ -7,7 +7,6 @@ use Elastica\Index\Settings as IndexSettings;
 use Elastica\Index\Stats as IndexStats;
 use Elastica\ResultSet\BuilderInterface;
 use Elasticsearch\Endpoints\AbstractEndpoint;
-use Elasticsearch\Endpoints\Indices\Settings\Put;
 use Elasticsearch\Endpoints\DeleteByQuery;
 use Elasticsearch\Endpoints\Indices\Aliases\Update;
 use Elasticsearch\Endpoints\Indices\Analyze;
@@ -21,6 +20,7 @@ use Elasticsearch\Endpoints\Indices\ForceMerge;
 use Elasticsearch\Endpoints\Indices\Mapping\Get;
 use Elasticsearch\Endpoints\Indices\Open;
 use Elasticsearch\Endpoints\Indices\Refresh;
+use Elasticsearch\Endpoints\Indices\Settings\Put;
 
 /**
  * Elastica index object.
@@ -119,36 +119,38 @@ class Index implements SearchableInterface
      * Uses _bulk to send documents to the server.
      *
      * @param array|\Elastica\Document[] $docs Array of Elastica\Document
+     * @param array                      $options Array of query params to use for query. For possible options check es api
      *
      * @return \Elastica\Bulk\ResponseSet
      *
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
      */
-    public function updateDocuments(array $docs)
+    public function updateDocuments(array $docs, array $options = [])
     {
         foreach ($docs as $doc) {
             $doc->setIndex($this->getName());
         }
 
-        return $this->getClient()->updateDocuments($docs);
+        return $this->getClient()->updateDocuments($docs, $options);
     }
 
     /**
      * Uses _bulk to send documents to the server.
      *
      * @param array|\Elastica\Document[] $docs Array of Elastica\Document
+     * @param array                      $options Array of query params to use for query. For possible options check es api
      *
      * @return \Elastica\Bulk\ResponseSet
      *
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
      */
-    public function addDocuments(array $docs)
+    public function addDocuments(array $docs, array $options = [])
     {
         foreach ($docs as $doc) {
             $doc->setIndex($this->getName());
         }
 
-        return $this->getClient()->addDocuments($docs);
+        return $this->getClient()->addDocuments($docs, $options);
     }
 
     /**
@@ -198,25 +200,6 @@ class Index implements SearchableInterface
         }
 
         return $this->getClient()->deleteDocuments($docs);
-    }
-
-    /**
-     * Optimizes search index.
-     *
-     * Detailed arguments can be found here in the link
-     *
-     * @param array $args OPTIONAL Additional arguments
-     *
-     * @return array Server response
-     *
-     * @deprecated Replaced by forcemerge
-     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-optimize.html
-     */
-    public function optimize($args = [])
-    {
-        trigger_error('Deprecated: Elastica\Index::optimize() is deprecated and will be removed in further Elastica releases. Use Elastica\Index::forcemerge() instead.', E_USER_DEPRECATED);
-
-        return $this->forcemerge($args);
     }
 
     /**
@@ -567,24 +550,24 @@ class Index implements SearchableInterface
      *
      * Detailed arguments can be found here in the link
      *
-     * @param string $text String to be analyzed
-     * @param array  $args OPTIONAL Additional arguments
+     * @param array $body String to be analyzed
+     * @param array $args OPTIONAL Additional arguments
      *
      * @return array Server response
      *
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-analyze.html
      */
-    public function analyze($text, $args = [])
+    public function analyze(array $body, $args = [])
     {
         $endpoint = new Analyze();
-        $endpoint->setBody($text);
+        $endpoint->setBody($body);
         $endpoint->setParams($args);
 
         $data = $this->requestEndpoint($endpoint)->getData();
 
         // Support for "Explain" parameter, that returns a different response structure from Elastic
         // @see: https://www.elastic.co/guide/en/elasticsearch/reference/current/_explain_analyze.html
-        if (isset($args['explain']) && $args['explain']) {
+        if (isset($body['explain']) && $body['explain']) {
             return $data['detail'];
         }
 

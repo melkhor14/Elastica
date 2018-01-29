@@ -18,7 +18,7 @@ class FunctionScoreTest extends BaseTest
         $type = $index->getType('test');
 
         $type->setMapping([
-            'name' => ['type' => 'text', 'index' => 'not_analyzed'],
+            'name' => ['type' => 'text', 'index' => 'false'],
             'location' => ['type' => 'geo_point'],
             'price' => ['type' => 'float'],
             'popularity' => ['type' => 'integer'],
@@ -439,7 +439,6 @@ class FunctionScoreTest extends BaseTest
      */
     public function testScriptScore()
     {
-        $this->_checkScriptInlineSetting();
         $scriptString = "_score * doc['price'].value";
         $script = new Script($scriptString, null, Script::LANG_PAINLESS);
         $query = new FunctionScore();

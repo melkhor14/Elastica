@@ -22,6 +22,10 @@ class Settings
 {
     const DEFAULT_REFRESH_INTERVAL = '1s';
 
+    const DEFAULT_NUMBER_OF_REPLICAS = 1;
+
+    const DEFAULT_NUMBER_OF_SHARDS = 5;
+
     /**
      * Response.
      *
@@ -134,6 +138,42 @@ class Settings
     }
 
     /**
+     * Returns the number of replicas.
+     *
+     * If no number of replicas is set, the default number is returned
+     *
+     * @return int The number of replicas
+     */
+    public function getNumberOfReplicas()
+    {
+        $replicas = $this->get('number_of_replicas');
+
+        if (null === $replicas) {
+            $replicas = self::DEFAULT_NUMBER_OF_REPLICAS;
+        }
+
+        return $replicas;
+    }
+
+    /**
+     * Returns the number of shards.
+     *
+     * If no number of shards is set, the default number is returned
+     *
+     * @return int The number of shards
+     */
+    public function getNumberOfShards()
+    {
+        $shards = $this->get('number_of_shards');
+
+        if (null === $shards) {
+            $shards = self::DEFAULT_NUMBER_OF_SHARDS;
+        }
+
+        return $shards;
+    }
+
+    /**
      * Sets the index to read only.
      *
      * @param bool $readOnly (default = true)
@@ -223,9 +263,9 @@ class Settings
      * Sets the index refresh interval.
      *
      * Value can be for example 3s for 3 seconds or
-     * 5m for 5 minutes. -1 refreshing is disabled.
+     * 5m for 5 minutes. -1 to disabled refresh.
      *
-     * @param int $interval Number of milliseconds
+     * @param string $interval Duration of the refresh interval
      *
      * @return \Elastica\Response Response object
      */

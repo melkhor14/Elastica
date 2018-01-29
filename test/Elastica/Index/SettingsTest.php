@@ -53,28 +53,109 @@ class SettingsTest extends BaseTest
         $this->assertNotNull($settings->get('number_of_shards'));
         $this->assertNull($settings->get('kjqwerjlqwer'));
 
+        $index = $client->getIndex($indexName);
         $index->delete();
     }
 
     /**
      * @group functional
      */
-    public function testSetNumberOfReplicas()
+    public function testDeleteAliasWithException()
     {
-        $indexName = 'test';
-
+        $indexName = 'deletetestaliasexception';
+        $aliasName = 'deletetestaliasexception_alias';
         $client = $this->_getClient();
         $index = $client->getIndex($indexName);
         $index->create([], true);
+        $index->refresh();
+
+        $index->addAlias($aliasName);
+
+        $indexAlias = $client->getIndex($aliasName);
+
+        try {
+            $indexAlias->delete();
+            $this->fail('Should throw exception because you should delete the concrete index and not the alias');
+        } catch (ResponseException $e) {
+            $error = $e->getResponse()->getFullError();
+
+            $this->assertContains('illegal_argument_exception', $error['type']);
+            $this->assertContains('specify the corresponding concrete indices instead.', $error['reason']);
+        }
+    }
+
+    /**
+     * @group functional
+     */
+    public function testSetGetNumberOfReplicas()
+    {
+        $index = $this->_createIndex();
+        $index->create([], true);
         $settings = $index->getSettings();
 
-        $settings->setNumberOfReplicas(2);
+        // Check for zero replicas
+        $settings->setNumberOfReplicas(0);
         $index->refresh();
-        $this->assertEquals(2, $settings->get('number_of_replicas'));
+        $this->assertEquals(0, $settings->get('number_of_replicas'));
+        $this->assertEquals(0, $settings->getNumberOfReplicas());
 
+        // Check with 3 replicas
         $settings->setNumberOfReplicas(3);
         $index->refresh();
         $this->assertEquals(3, $settings->get('number_of_replicas'));
+        $this->assertEquals(3, $settings->getNumberOfReplicas());
+
+        $index->delete();
+    }
+
+    /**
+     * @group functional
+     */
+    public function testGetNumberOfReplicas()
+    {
+        $index = $this->_createIndex();
+        $index->create([], true);
+
+        $settings = $index->getSettings();
+
+        // Test with default number of replicas
+        $this->assertEquals(IndexSettings::DEFAULT_NUMBER_OF_REPLICAS, $settings->get('number_of_replicas'));
+        $this->assertEquals(IndexSettings::DEFAULT_NUMBER_OF_REPLICAS, $settings->getNumberOfReplicas());
+
+        $index->delete();
+    }
+
+    /**
+     * @group functional
+     */
+    public function testGetNumberOfShards()
+    {
+        $index = $this->_createIndex();
+        $index->create(['index' => ['number_of_shards' => 1]], true);
+
+        $settings = $index->getSettings();
+
+        // Test with default number of replicas
+        $this->assertEquals(1, $settings->get('number_of_shards'));
+        $this->assertEquals(1, $settings->getNumberOfShards());
+
+        $index->delete();
+    }
+
+    /**
+     * @group functional
+     */
+    public function testGetDefaultNumberOfShards()
+    {
+        $index = $this->_createIndex();
+        $index->create([], true);
+        $index->refresh();
+
+        $settings = $index->getSettings();
+
+        // Test with default number of shards
+        $this->assertEquals(IndexSettings::DEFAULT_NUMBER_OF_SHARDS, $settings->get('number_of_shards'));
+        $this->assertEquals(IndexSettings::DEFAULT_NUMBER_OF_SHARDS, $settings->getNumberOfShards());
 
         $index->delete();
     }
@@ -84,10 +165,7 @@ class SettingsTest extends BaseTest
      */
     public function testSetRefreshInterval()
     {
-        $indexName = 'test';
-
-        $client = $this->_getClient();
-        $index = $client->getIndex($indexName);
+        $index = $this->_createIndex();
         $index->create([], true);
 
         $settings = $index->getSettings();
@@ -108,10 +186,7 @@ class SettingsTest extends BaseTest
      */
     public function testGetRefreshInterval()
     {
-        $indexName = 'test';
-
-        $client = $this->_getClient();
-        $index = $client->getIndex($indexName);
+        $index = $this->_createIndex();
         $index->create([], true);
 
         $settings = $index->getSettings();
@@ -132,10 +207,7 @@ class SettingsTest extends BaseTest
      */
     public function testSetMergePolicy()
     {
-        $indexName = 'test';
-
-        $client = $this->_getClient();
-        $index = $client->getIndex($indexName);
+        $index = $this->_createIndex();
         $index->create([], true);
         //wait for the shards to be allocated
         $this->_waitForAllocation($index);
@@ -156,10 +228,7 @@ class SettingsTest extends BaseTest
      */
     public function testSetMaxMergeAtOnce()
     {
-        $indexName = 'test';
-
-        $client = $this->_getClient();
-        $index = $client->getIndex($indexName);
+        $index = $this->_createIndex();
         $index->create([], true);
 
         //wait for the shards to be allocated
@@ -318,10 +387,7 @@ class SettingsTest extends BaseTest
      */
     public function testSetMultiple()
     {
-        $indexName = 'test';
-
-        $client = $this->_getClient();
-        $index = $client->getIndex($indexName);
+        $index = $this->_createIndex();
         $index->create([], true);
 
         $settings = $index->getSettings();

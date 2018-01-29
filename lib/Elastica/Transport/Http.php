@@ -68,17 +68,15 @@ class Http extends AbstractTransport
 
         $query = $request->getQuery();
 
-        //Auto add fielddata to all text fields
         foreach ($request as &$item) {
             if (isset($item['method']) && $item['method'] == 'PUT') {
                 foreach ($item['data']['mappings'] as $index => $fields) {
                     if (isset ($fields['properties'])) {
                         foreach ($fields['properties'] as $fieldName => $fieldValue) {
-                            if ($fieldValue['type'] == 'nested' || $fieldValue['type'] == 'object') {
+                            if ($fieldValue['type'] == 'nested' || $fieldValue['type'] == 'object')
                                 $item['data']['mappings'][$index]['properties'][$fieldName] = $this->formatElasticaData($item['data']['mappings'][$index]['properties'][$fieldName]);
-                            }else if($fieldValue['type'] == 'text') {
+                            else if($fieldValue['type'] == 'text')
                                 $item['data']['mappings'][$index]['properties'][$fieldName]['fielddata'] = true;
-                            }
                         }
                     }
                 }
@@ -86,7 +84,9 @@ class Http extends AbstractTransport
         }
 
         if (!empty($query)) {
-            $baseUri .= '?'.http_build_query($query);
+            $baseUri .= '?'.http_build_query(
+                $this->sanityzeQueryStringBool($query)
+                );
         }
 
         curl_setopt($conn, CURLOPT_URL, $baseUri);
@@ -130,7 +130,7 @@ class Http extends AbstractTransport
 
         if (!empty($headersConfig)) {
             $headers = [];
-            while (list($header, $headerValue) = each($headersConfig)) {
+            foreach ($headersConfig as $header => $headerValue) {
                 array_push($headers, $header.': '.$headerValue);
             }
         }
@@ -153,6 +153,7 @@ class Http extends AbstractTransport
                 $content = str_replace('\/', '/', $content);
             }
 
+            array_push($headers, sprintf('Content-Type: %s', $request->getContentType()));
             if ($connection->hasCompression()) {
                 // Compress the body of the request ...
                 curl_setopt($conn, CURLOPT_POSTFIELDS, gzencode($content));

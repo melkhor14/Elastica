@@ -305,13 +305,14 @@ class Client
      *
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
      *
-     * @param array|\Elastica\Document[] $docs Array of Elastica\Document
+     * @param array|\Elastica\Document[] $docs          Array of Elastica\Document
+     * @param array                      $requestParams
      *
      * @throws \Elastica\Exception\InvalidException If docs is empty
      *
      * @return \Elastica\Bulk\ResponseSet Response object
      */
-    public function updateDocuments(array $docs)
+    public function updateDocuments(array $docs, array $requestParams = [])
     {
         if (empty($docs)) {
             throw new InvalidException('Array has to consist of at least one element');
@@ -320,6 +321,9 @@ class Client
         $bulk = new Bulk($this);
 
         $bulk->addDocuments($docs, Action::OP_TYPE_UPDATE);
+        foreach ($requestParams as $key => $value) {
+            $bulk->setRequestParam($key, $value);
+        }
 
         return $bulk->send();
     }
@@ -333,13 +337,14 @@ class Client
      *
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html
      *
-     * @param array|\Elastica\Document[] $docs Array of Elastica\Document
+     * @param array|\Elastica\Document[] $docs          Array of Elastica\Document
+     * @param array                      $requestParams
      *
      * @throws \Elastica\Exception\InvalidException If docs is empty
      *
      * @return \Elastica\Bulk\ResponseSet Response object
      */
-    public function addDocuments(array $docs)
+    public function addDocuments(array $docs, array $requestParams = [])
     {
         if (empty($docs)) {
             throw new InvalidException('Array has to consist of at least one element');
@@ -348,6 +353,10 @@ class Client
         $bulk = new Bulk($this);
 
         $bulk->addDocuments($docs);
+
+        foreach ($requestParams as $key => $value) {
+            $bulk->setRequestParam($key, $value);
+        }
 
         return $bulk->send();
     }
@@ -472,12 +481,13 @@ class Client
      * Bulk deletes documents.
      *
      * @param array|\Elastica\Document[] $docs
+     * @param array                      $requestParams
      *
      * @throws \Elastica\Exception\InvalidException
      *
      * @return \Elastica\Bulk\ResponseSet
      */
-    public function deleteDocuments(array $docs)
+    public function deleteDocuments(array $docs, array $requestParams = [])
     {
         if (empty($docs)) {
             throw new InvalidException('Array has to consist of at least one element');
@@ -485,6 +495,10 @@ class Client
 
         $bulk = new Bulk($this);
         $bulk->addDocuments($docs, Action::OP_TYPE_DELETE);
+
+        foreach ($requestParams as $key => $value) {
+            $bulk->setRequestParam($key, $value);
+        }
 
         return $bulk->send();
     }
@@ -654,19 +668,20 @@ class Client
      *
      * It's possible to make any REST query directly over this method
      *
-     * @param string       $path   Path to call
-     * @param string       $method Rest method to use (GET, POST, DELETE, PUT)
-     * @param array|string $data   OPTIONAL Arguments as array or pre-encoded string
-     * @param array        $query  OPTIONAL Query params
+     * @param string       $path        Path to call
+     * @param string       $method      Rest method to use (GET, POST, DELETE, PUT)
+     * @param array|string $data        OPTIONAL Arguments as array or pre-encoded string
+     * @param array        $query       OPTIONAL Query params
+     * @param string       $contentType Content-Type sent with this request
      *
      * @throws Exception\ConnectionException|\Exception
      *
      * @return Response Response object
      */
-    public function request($path, $method = Request::GET, $data = [], array $query = [])
+    public function request($path, $method = Request::GET, $data = [], array $query = [], $contentType = Request::DEFAULT_CONTENT_TYPE)
     {
         $connection = $this->getConnection();
-        $request = $this->_lastRequest = new Request($path, $method, $data, $query, $connection);
+        $request = $this->_lastRequest = new Request($path, $method, $data, $query, $connection, $contentType);
         $this->_lastResponse = null;
 
         try {

@@ -39,7 +39,6 @@ class GeoCentroidTest extends BaseAggregationTest
         $query->addAggregation($agg);
         $results = $this->_getIndexForTest()->search($query)->getAggregation('centroid');
 
-        $this->assertEquals(34.476731875911, $results['location']['lat']);
-        $this->assertEquals(-118.97031342611, $results['location']['lon']);
+        $this->assertEquals(3, $results['count']);
     }
 }

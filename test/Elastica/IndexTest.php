@@ -4,7 +4,6 @@ namespace Elastica\Test;
 use Elastica\Document;
 use Elastica\Exception\ResponseException;
 use Elastica\Index;
-use Elastica\Query\HasChild;
 use Elastica\Query\QueryString;
 use Elastica\Query\SimpleQueryString;
 use Elastica\Query\Term;
@@ -79,208 +78,6 @@ class IndexTest extends BaseTest
 
     /**
      * @group functional
-     */
-    public function testParent()
-    {
-        $index = $this->_createIndex();
-
-        $typeBlog = new Type($index, 'blog');
-
-        $typeComment = new Type($index, 'comment');
-
-        $mapping = new Mapping();
-        $mapping->setParam('_parent', ['type' => 'blog']);
-        $typeComment->setMapping($mapping);
-
-        $entry1 = new Document(1);
-        $entry1->set('title', 'Hello world');
-        $typeBlog->addDocument($entry1);
-
-        $entry2 = new Document(2);
-        $entry2->set('title', 'Foo bar');
-        $typeBlog->addDocument($entry2);
-
-        $entry3 = new Document(3);
-        $entry3->set('title', 'Till dawn');
-        $typeBlog->addDocument($entry3);
-
-        $comment = new Document(1);
-        $comment->set('author', 'Max');
-        $comment->setParent(2); // Entry Foo bar
-        $typeComment->addDocument($comment);
-
-        $index->forcemerge();
-
-        $query = new HasChild('Max', 'comment');
-        $resultSet = $typeBlog->search($query);
-        $this->assertEquals(1, $resultSet->count());
-        $this->assertEquals(['title' => 'Foo bar'], $resultSet->current()->getData());
-    }
-
-    /**
-     * @group functional
-     */
-    public function testAddPdfFile()
-    {
-        $indexMapping = ['file' => ['type' => 'attachment'], 'text' => ['type' => 'text']];
-
-        $indexParams = ['index' => ['number_of_shards' => 1, 'number_of_replicas' => 0]];
-
-        $index = $this->_createIndex();
-        $type = new Type($index, 'test');
-
-        $index->create($indexParams, true);
-        $type->setMapping($indexMapping);
-
-        $doc1 = new Document(1);
-        $doc1->addFile('file', BASE_PATH.'/data/test.pdf', 'application/pdf');
-        $doc1->set('text', 'basel world');
-        $type->addDocument($doc1);
-
-        $doc2 = new Document(2);
-        $doc2->set('text', 'running in basel');
-        $type->addDocument($doc2);
-
-        $index->forcemerge();
-
-        $resultSet = $type->search('xodoa');
-        $this->assertEquals(1, $resultSet->count());
-
-        $resultSet = $type->search('basel');
-        $this->assertEquals(2, $resultSet->count());
-
-        // Author is ruflin
-        $resultSet = $type->search('ruflin');
-        $this->assertEquals(1, $resultSet->count());
-
-        // String does not exist in file
-        $resultSet = $type->search('guschti');
-        $this->assertEquals(0, $resultSet->count());
-    }
-
-    /**
-     * @group functional
-     */
-    public function testAddPdfFileContent()
-    {
-        $indexMapping = ['file' => ['type' => 'attachment'], 'text' => ['type' => 'text']];
-
-        $indexParams = ['index' => ['number_of_shards' => 1, 'number_of_replicas' => 0]];
-
-        $index = $this->_createIndex();
-        $type = new Type($index, 'test');
-
-        $index->create($indexParams, true);
-        $type->setMapping($indexMapping);
-
-        $doc1 = new Document(1);
-        $doc1->addFileContent('file', file_get_contents(BASE_PATH.'/data/test.pdf'));
-        $doc1->set('text', 'basel world');
-        $type->addDocument($doc1);
-
-        $doc2 = new Document(2);
-        $doc2->set('text', 'running in basel');
-        $type->addDocument($doc2);
-
-        $index->forcemerge();
-
-        $resultSet = $type->search('xodoa');
-        $this->assertEquals(1, $resultSet->count());
-
-        $resultSet = $type->search('basel');
-        $this->assertEquals(2, $resultSet->count());
-
-        // Author is ruflin
-        $resultSet = $type->search('ruflin');
-        $this->assertEquals(1, $resultSet->count());
-
-        // String does not exist in file
-        $resultSet = $type->search('guschti');
-        $this->assertEquals(0, $resultSet->count());
-    }
-
-    /**
-     * @group functional
-     */
-    public function testAddWordxFile()
-    {
-        $indexMapping = ['file' => ['type' => 'attachment'], 'text' => ['type' => 'text']];
-
-        $indexParams = ['index' => ['number_of_shards' => 1, 'number_of_replicas' => 0]];
-
-        $index = $this->_createIndex();
-        $type = new Type($index, 'content');
-
-        $index->create($indexParams, true);
-        $type->setMapping($indexMapping);
-
-        $doc1 = new Document(1);
-        $doc1->addFile('file', BASE_PATH.'/data/test.docx');
-        $doc1->set('text', 'basel world');
-        $type->addDocument($doc1);
-
-        $index->forcemerge();
-        $index->refresh();
-
-        $doc2 = new Document(2);
-        $doc2->set('text', 'running in basel');
-        $type->addDocument($doc2);
-
-        $index->forcemerge();
-        $index->refresh();
-
-        $resultSet = $type->search('basel');
-        $this->assertEquals(2, $resultSet->count());
-
-        $resultSet = $type->search('ruflin');
-        $this->assertEquals(0, $resultSet->count());
-
-        $resultSet = $type->search('Xodoa');
-        $this->assertEquals(1, $resultSet->count());
-    }
-
-    /**
-     * @group functional
-     */
-    public function testExcludeFileSource()
-    {
-        $indexMapping = ['file' => ['type' => 'attachment'], 'text' => ['type' => 'text', 'store' => true],
-            'title' => ['type' => 'text', 'store' => true], ];
-
-        $indexParams = ['index' => ['number_of_shards' => 1, 'number_of_replicas' => 0]];
-
-        $index = $this->_createIndex();
-        $type = new Type($index, 'content');
-
-        $mapping = Mapping::create($indexMapping);
-        $mapping->setSource(['excludes' => ['file']]);
-
-        $mapping->setType($type);
-
-        $index->create($indexParams, true);
-        $type->setMapping($mapping);
-
-        $docId = 1;
-        $text = 'Basel World';
-        $title = 'No Title';
-
-        $doc1 = new Document($docId);
-        $doc1->addFile('file', BASE_PATH.'/data/test.docx');
-        $doc1->set('text', $text);
-        $doc1->set('title', $title);
-        $type->addDocument($doc1);
-
-        // Optimization necessary, as otherwise source still in realtime get
-        $index->forcemerge();
-
-        $data = $type->getDocument($docId)->getData();
-        $this->assertEquals($data['title'], $title);
-        $this->assertEquals($data['text'], $text);
-        $this->assertFalse(isset($data['file']));
-    }
-
-    /**
-     * @group functional
      * @expectedException \Elastica\Exception\ResponseException
      */
     public function testAddRemoveAlias()
@@ -306,12 +103,6 @@ class IndexTest extends BaseTest
 
         $data = $index->addAlias($aliasName, true)->getData();
         $this->assertTrue($data['acknowledged']);
-
-        $index2 = $client->getIndex($aliasName);
-        $type2 = $index2->getType($typeName);
-
-        $resultSet2 = $type2->search('ruflin');
-        $this->assertEquals(1, $resultSet2->count());
 
         $response = $index->removeAlias($aliasName)->getData();
         $this->assertTrue($response['acknowledged']);
@@ -355,16 +146,13 @@ class IndexTest extends BaseTest
         $type1 = new Type($index, 'test1');
         $type1->addDocument(new Document(1, ['name' => 'ruflin nicolas']));
         $type1->addDocument(new Document(2, ['name' => 'ruflin']));
-        $type2 = new Type($index, 'test2');
-        $type2->addDocument(new Document(1, ['name' => 'ruflin nicolas']));
-        $type2->addDocument(new Document(2, ['name' => 'ruflin']));
         $index->refresh();
 
         $response = $index->search('ruflin*');
-        $this->assertEquals(4, $response->count());
+        $this->assertEquals(2, $response->count());
 
         $response = $index->search('nicolas');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         // Delete first document
         $response = $index->deleteByQuery('nicolas');
@@ -374,7 +162,7 @@ class IndexTest extends BaseTest
 
         // Makes sure, document is deleted
         $response = $index->search('ruflin*');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         $response = $index->search('nicolas');
         $this->assertEquals(0, $response->count());
@@ -389,16 +177,13 @@ class IndexTest extends BaseTest
         $type1 = new Type($index, 'test1');
         $type1->addDocument(new Document(1, ['name' => 'ruflin nicolas']));
         $type1->addDocument(new Document(2, ['name' => 'ruflin']));
-        $type2 = new Type($index, 'test2');
-        $type2->addDocument(new Document(1, ['name' => 'ruflin nicolas']));
-        $type2->addDocument(new Document(2, ['name' => 'ruflin']));
         $index->refresh();
 
         $response = $index->search('ruflin*');
-        $this->assertEquals(4, $response->count());
+        $this->assertEquals(2, $response->count());
 
         $response = $index->search('nicolas');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         // Delete first document
         $response = $index->deleteByQuery(new SimpleQueryString('nicolas'));
@@ -408,7 +193,7 @@ class IndexTest extends BaseTest
 
         // Makes sure, document is deleted
         $response = $index->search('ruflin*');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         $response = $index->search('nicolas');
         $this->assertEquals(0, $response->count());
@@ -423,16 +208,13 @@ class IndexTest extends BaseTest
         $type1 = new Type($index, 'test1');
         $type1->addDocument(new Document(1, ['name' => 'ruflin nicolas']));
         $type1->addDocument(new Document(2, ['name' => 'ruflin']));
-        $type2 = new Type($index, 'test2');
-        $type2->addDocument(new Document(1, ['name' => 'ruflin nicolas']));
-        $type2->addDocument(new Document(2, ['name' => 'ruflin']));
         $index->refresh();
 
         $response = $index->search('ruflin*');
-        $this->assertEquals(4, $response->count());
+        $this->assertEquals(2, $response->count());
 
         $response = $index->search('nicolas');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         // Delete first document
         $response = $index->deleteByQuery(['query' => ['query_string' => ['query' => 'nicolas']]]);
@@ -442,7 +224,7 @@ class IndexTest extends BaseTest
 
         // Makes sure, document is deleted
         $response = $index->search('ruflin*');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         $response = $index->search('nicolas');
         $this->assertEquals(0, $response->count());
@@ -458,27 +240,29 @@ class IndexTest extends BaseTest
         $routing1 = 'first_routing';
         $routing2 = 'second_routing';
 
-        for ($i = 1; $i <= 2; ++$i) {
-            $type = new Type($index, 'test'.$i);
-            $doc = new Document(1, ['name' => 'ruflin nicolas']);
-            $doc->setRouting($routing1);
-            $type->addDocument($doc);
+        $type = new Type($index, 'test');
+        $doc = new Document(1, ['name' => 'ruflin nicolas']);
+        $doc->setRouting($routing1);
+        $type->addDocument($doc);
 
-            $doc = new Document(2, ['name' => 'ruflin']);
-            $doc->setRouting($routing1);
-            $type->addDocument($doc);
-        }
+        $doc = new Document(2, ['name' => 'ruflin']);
+        $doc->setRouting($routing1);
+        $type->addDocument($doc);
+
+        $doc = new Document(2, ['name' => 'ruflin']);
+        $doc->setRouting($routing1);
+        $type->addDocument($doc);
 
         $index->refresh();
 
         $response = $index->search('ruflin*');
-        $this->assertEquals(4, $response->count());
+        $this->assertEquals(2, $response->count());
 
         $response = $index->search('ruflin*', ['routing' => $routing2]);
         $this->assertEquals(0, $response->count());
 
         $response = $index->search('nicolas');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         // Route to the wrong document id; should not delete
         $response = $index->deleteByQuery(new SimpleQueryString('nicolas'), ['routing' => $routing2]);
@@ -487,10 +271,10 @@ class IndexTest extends BaseTest
         $index->refresh();
 
         $response = $index->search('ruflin*');
-        $this->assertEquals(4, $response->count());
+        $this->assertEquals(2, $response->count());
 
         $response = $index->search('nicolas');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         // Delete first document
         $response = $index->deleteByQuery(new SimpleQueryString('nicolas'), ['routing' => $routing1]);
@@ -500,7 +284,7 @@ class IndexTest extends BaseTest
 
         // Makes sure, document is deleted
         $response = $index->search('ruflin*');
-        $this->assertEquals(2, $response->count());
+        $this->assertEquals(1, $response->count());
 
         $response = $index->search('nicolas');
         $this->assertEquals(0, $response->count());
@@ -538,36 +322,24 @@ class IndexTest extends BaseTest
     public function testAddAliasTwoIndices()
     {
         $indexName1 = 'test1';
-        $indexName2 = 'test2';
         $aliasName = 'test-alias';
 
         $client = $this->_getClient();
         $index1 = $client->getIndex($indexName1);
-        $index2 = $client->getIndex($indexName2);
 
         $index1->create([], true);
         $this->_waitForAllocation($index1);
         $index1->addAlias($aliasName);
-        $index2->create([], true);
-        $this->_waitForAllocation($index2);
 
         $index1->refresh();
-        $index2->refresh();
         $index1->forcemerge();
-        $index2->forcemerge();
 
         $status = new Status($client);
 
         $this->assertTrue($status->indexExists($indexName1));
-        $this->assertTrue($status->indexExists($indexName2));
 
         $this->assertTrue($status->aliasExists($aliasName));
         $this->assertTrue($index1->hasAlias($aliasName));
-        $this->assertFalse($index2->hasAlias($aliasName));
-
-        $index2->addAlias($aliasName);
-        $this->assertTrue($index1->hasAlias($aliasName));
-        $this->assertTrue($index2->hasAlias($aliasName));
     }
 
     /**
@@ -576,31 +348,21 @@ class IndexTest extends BaseTest
     public function testReplaceAlias()
     {
         $indexName1 = 'test1';
-        $indexName2 = 'test2';
         $aliasName = 'test-alias';
 
         $client = $this->_getClient();
         $index1 = $client->getIndex($indexName1);
-        $index2 = $client->getIndex($indexName2);
 
         $index1->create([], true);
         $index1->addAlias($aliasName);
-        $index2->create([], true);
 
         $index1->refresh();
-        $index2->refresh();
 
         $status = new Status($client);
 
         $this->assertTrue($status->indexExists($indexName1));
-        $this->assertTrue($status->indexExists($indexName2));
         $this->assertTrue($status->aliasExists($aliasName));
         $this->assertTrue($index1->hasAlias($aliasName));
-        $this->assertFalse($index2->hasAlias($aliasName));
-
-        $index2->addAlias($aliasName, true);
-        $this->assertFalse($index1->hasAlias($aliasName));
-        $this->assertTrue($index2->hasAlias($aliasName));
     }
 
     /**
@@ -900,7 +662,7 @@ class IndexTest extends BaseTest
     {
         $index = $this->_createIndex();
         $index->refresh();
-        $returnedTokens = $index->analyze('foo');
+        $returnedTokens = $index->analyze(['text' => 'foo']);
 
         $tokens = [
             [
@@ -924,7 +686,7 @@ class IndexTest extends BaseTest
         $index->refresh();
         $endpoint = new Analyze();
         $endpoint->setIndex('fooIndex');
-        $endpoint->setBody('foo');
+        $endpoint->setBody(['text' => 'foo']);
         $returnedTokens = $index->requestEndpoint($endpoint)->getData()['tokens'];
 
         $tokens = [
@@ -947,7 +709,7 @@ class IndexTest extends BaseTest
     {
         $index = $this->_createIndex();
         $index->refresh();
-        $data = $index->analyze('foo', ['explain' => true]);
+        $data = $index->analyze(['text' => 'foo', 'explain' => true], []);
 
         $this->assertArrayHasKey('custom_analyzer', $data);
     }

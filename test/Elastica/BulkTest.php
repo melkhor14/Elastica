@@ -25,7 +25,6 @@ class BulkTest extends BaseTest
         $index = $this->_createIndex();
         $indexName = $index->getName();
         $type = $index->getType('bulk_test');
-        $type2 = $index->getType('bulk_test2');
         $client = $index->getClient();
 
         $newDocument1 = $type->createDocument(1, ['name' => 'Mister Fantastic']);
@@ -43,7 +42,7 @@ class BulkTest extends BaseTest
         ];
 
         $bulk = new Bulk($client);
-        $bulk->setType($type2);
+        $bulk->setType($type);
         $bulk->addDocuments($documents);
 
         $actions = $bulk->getActions();
@@ -106,10 +105,8 @@ class BulkTest extends BaseTest
         }
 
         $type->getIndex()->refresh();
-        $type2->getIndex()->refresh();
 
-        $this->assertEquals(3, $type->count());
-        $this->assertEquals(1, $type2->count());
+        $this->assertEquals(4, $type->count());
 
         $bulk = new Bulk($client);
         $bulk->addDocument($newDocument3, Action::OP_TYPE_DELETE);
@@ -125,7 +122,7 @@ class BulkTest extends BaseTest
 
         $type->getIndex()->refresh();
 
-        $this->assertEquals(2, $type->count());
+        $this->assertEquals(3, $type->count());
 
         try {
             $type->getDocument(3);
@@ -142,7 +139,6 @@ class BulkTest extends BaseTest
     {
         $index = $this->_createIndex();
         $type = $index->getType('bulk_test');
-        $type2 = $index->getType('bulk_test2');
         $client = $index->getClient();
 
         $newDocument1 = $type->createDocument(1, ['name' => 'Сегодня, я вижу, особенно грустен твой взгляд,']);
@@ -156,7 +152,7 @@ class BulkTest extends BaseTest
         ];
 
         $bulk = new Bulk($client);
-        $bulk->setType($type2);
+        $bulk->setType($type);
         $bulk->addDocuments($documents);
 
         $actions = $bulk->getActions();
@@ -425,7 +421,6 @@ class BulkTest extends BaseTest
      */
     public function testUpdate()
     {
-        $this->_checkScriptInlineSetting();
         $index = $this->_createIndex();
         $type = $index->getType('bulk_test');
         $client = $index->getClient();
